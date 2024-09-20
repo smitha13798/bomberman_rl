@@ -1,0 +1,13 @@
+2024-09-20 15:34:12,717 [dqn_age4_code] INFO: DQN agent setup completed.
+2024-09-20 15:34:12,718 [dqn_age4_code] INFO: Training setup complete.
+2024-09-20 15:34:53,056 [dqn_age4_wrapper] ERROR: '3'
+Traceback (most recent call last):
+  File "C:\Users\WELCOME\Desktop\sushmitha\MLE\bomberman_rl\bomberman_r_1\agents.py", line 248, in process_event
+    event_result = getattr(module, event_name)(self.fake_self, *event_args)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\WELCOME\Desktop\sushmitha\MLE\bomberman_rl\bomberman_r_1\agent_code\dqn_age4\train.py", line 134, in end_of_round
+    self.agent.experience_replay()
+  File "C:\Users\WELCOME\Desktop\sushmitha\MLE\bomberman_rl\bomberman_r_1\agent_code\dqn_age4\dqn_model.py", line 83, in experience_replay
+    actions = [action_mapping[str(a)] if isinstance(a, np.str_) else int(a) for a in actions]
+               ~~~~~~~~~~~~~~^^^^^^^^
+KeyError: '3'
