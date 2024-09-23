@@ -137,6 +137,8 @@ def end_of_round(self, last_game_state, last_action, events):
     # Optionally, decay the exploration rate
     self.agent.update_exploration_rate()
 
+    self.agent.save_model("latest_model.pth")
+
 def main_training_loop():
     self.agent.rewards_history = []  # Clear rewards history
 

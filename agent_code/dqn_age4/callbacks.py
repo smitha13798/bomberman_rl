@@ -2,6 +2,21 @@ import numpy as np
 import torch
 from .features import state_to_features
 from .utils import setup
+from .dqn_model import DQNAgent
+
+def setup(self):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Ensure the state dimension matches the feature space (e.g., 350)
+    self.agent = DQNAgent(state_dim=350, action_dim=6, device=device)
+    self.replay_buffer = self.agent.replay_buffer 
+    self.policy_net = self.agent.policy_net
+    self.device = device
+    self.logger.info("DQN agent setup completed.")
+    if not self.train:  # If not in training mode, load the trained model
+        self.agent.load_model("latest_model.pth")
+        self.logger.info("Loaded trained model for play mode.")
+    self.logger.info("DQN Agent setup complete.")
 
 # Example place in your code where you might prepare the state
 def prepare_state(state):
@@ -13,29 +28,53 @@ def prepare_state(state):
     state_tensor = torch.tensor(state, dtype=torch.float32).to(device)
     return state_tensor
 
+# def act(self, game_state):
+#     # Convert the game state to features
+#     state = state_to_features(game_state)
+
+#     # Ensure device is set
+#     if not hasattr(self, 'device'):
+#         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#     # Convert the state to a tensor and move it to the appropriate device
+#     state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
+
+#     # Check if the policy_net is set properly
+#     if not hasattr(self, 'policy_net'):
+#         raise AttributeError("policy_net is not initialized")
+
+#     # Use the policy network to choose the best action
+#     with torch.no_grad():
+#         action_index = self.policy_net(state).argmax().item()
+#     # action_index = self.policy_net(state).argmax().item()
+
+#     # Map the action index to the corresponding action
+#     ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
+#     self_action = ACTIONS[action_index]
+
+#     # Return the action
+#     return self_action
+
 def act(self, game_state):
-    # Convert the game state to features
+    # Extract features
     state = state_to_features(game_state)
+    self.logger.info(f"Extracted features: {state}")
 
-    # Ensure device is set
-    if not hasattr(self, 'device'):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Convert the state to a tensor and move it to the appropriate device
+    # Convert to tensor
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
 
-    # Check if the policy_net is set properly
-    if not hasattr(self, 'policy_net'):
-        raise AttributeError("policy_net is not initialized")
+    # Get Q-values
+    with torch.no_grad():
+        q_values = self.policy_net(state)
 
-    # Use the policy network to choose the best action
-    action_index = self.policy_net(state).argmax().item()
-
-    # Map the action index to the corresponding action
+    # Choose action
+    action_index = q_values.argmax().item()
     ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
     self_action = ACTIONS[action_index]
 
-    # Return the action
+    # Log decision
+    self.logger.info(f"Q-values: {q_values.cpu().numpy()}, Chosen action: {self_action}")
+
     return self_action
 
 def game_events_occurred(self, old_game_state, new_game_state, action, events):

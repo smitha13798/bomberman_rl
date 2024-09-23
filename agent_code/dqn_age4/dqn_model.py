@@ -7,6 +7,7 @@ from collections import deque
 import random
 import numpy as np
 import logging
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -62,10 +63,21 @@ class DQNAgent:
 
     def store_transition(self, state, action, reward, next_state, done):
         """Store experience in replay buffer"""
+        action_mapping = {'UP': 0, 'DOWN': 1, 'LEFT': 2, 'RIGHT': 3, 'WAIT': 4, 'BOMB': 5}
+        
+        # Convert action to integer if it's a string
+        if isinstance(action, str):
+            action = action_mapping.get(action, 0)  # Default to 0 if unknown action
+        elif not isinstance(action, (int, np.integer)):
+            action = 0  # Default to 0 for any other type
+        
         self.replay_buffer.push(state, action, reward, next_state, done)
         self.rewards_history.append(reward)
+
         # Check for None or empty state and replace with zero tensor
         self.next_state = next_state if next_state is not None and len(next_state) > 0 else np.zeros(self.state_dim)
+
+
 
     def experience_replay(self):
         if len(self.replay_buffer) < self.batch_size:
@@ -80,7 +92,16 @@ class DQNAgent:
         # Define action mapping
         action_mapping = {'UP': 0, 'DOWN': 1, 'LEFT': 2, 'RIGHT': 3, 'WAIT': 4, 'BOMB': 5}
         # Ensure all actions are correctly mapped, converting np.str_ to int
-        actions = [action_mapping[str(a)] if isinstance(a, np.str_) else int(a) for a in actions]
+        # actions = [action_mapping[str(a)] if isinstance(a, np.str_) else int(a) for a in actions]
+        def action_to_index(a):
+            if isinstance(a, (str, np.str_)):
+                return action_mapping.get(str(a), 0)  # Default to 0 if unknown action
+            elif isinstance(a, (int, np.integer)):
+                return int(a)
+            else:
+                return 0  # Default to 0 for any other type
+        
+        actions = [action_to_index(a) for a in actions]
         actions = torch.tensor(actions, dtype=torch.long).to(self.device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(self.device)
         dones = torch.tensor(dones, dtype=torch.float32).to(self.device)
@@ -95,6 +116,13 @@ class DQNAgent:
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()
+
+
+
+        
+        # Convert actions to integer indices
+        actions = [action_mapping.get(str(a), int(a)) if isinstance(a, (str, np.str_)) else int(a) for a in actions]
+
 
     def select_action(self, state):
         # Get the danger zone feature (whether the agent is in danger)
@@ -144,6 +172,38 @@ class DQNAgent:
 
     def update_target_network(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def save_model(self, filename):
+        try:
+            directory = os.path.dirname(filename)
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory)
+            
+            torch.save({
+                'policy_net_state_dict': self.policy_net.state_dict(),
+                'target_net_state_dict': self.target_net.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'exploration_rate': self.exploration_rate,
+                'replay_buffer': self.replay_buffer
+            }, filename)
+            logging.info(f"Model successfully saved to {filename}")
+        except Exception as e:
+            logging.error(f"Failed to save model to {filename}. Error: {str(e)}")
+
+    def load_model(self, filename):
+        try:
+            if os.path.exists(filename):
+                checkpoint = torch.load(filename, map_location=self.device)
+                self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
+                self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
+                self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                self.exploration_rate = checkpoint['exploration_rate']
+                self.replay_buffer = checkpoint['replay_buffer']
+                logging.info(f"Model successfully loaded from {filename}")
+            else:
+                logging.warning(f"No model found at {filename}. Starting with a new model.")
+        except Exception as e:
+            logging.error(f"Failed to load model from {filename}. Error: {str(e)}")
 
 
 class ReplayBuffer:

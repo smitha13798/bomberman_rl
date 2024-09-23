@@ -1,4 +1,6 @@
 import numpy as np
+from random import shuffle
+
 def moved_to_safe_spot(game_state):
     # Logic to calculate safe spots away from the bomb's blast range
     danger_zone, urgent_danger_zone = calculate_danger_zone(game_state['bombs'])
@@ -49,7 +51,7 @@ def calculate_free_space(arena):
     free_space[arena == 0] = True  # Assuming 0 represents free space
     return free_space
 
-# Add this function at the beginning of your features.py file
+
 def look_for_targets(free_space, start, targets):
     """
     Find the shortest path to one of the targets.
